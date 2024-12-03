@@ -1,0 +1,232 @@
+#*-----------------------------------------------------------------------------------------------------------
+#*  Nuvoton Technology Corporation Confidential
+#*
+#*  Copyright (c) 2020 by Nuvoton Technology Corporation
+#*  All rights reserved
+#*
+#*<<<----------------------------------------------------------------------------------------------------->>>
+#* Filename: makefile
+#*      The make file to build the firmware
+#*
+#* Project:
+#*            Nuvoton Embedded Controller FreeRTOS-based Firmware
+#*---------------------------------------------------------------------------------------------------------*/
+
+#-------------------------------------------------------------------------------
+# tools used in makefile
+#-------------------------------------------------------------------------------
+RM          = del /q /f
+MD          = md
+CP          = copy
+MV          = move /y
+RMDIR       = rmdir /S /Q
+
+# Select ARMv6-m bare-metal toolchain
+CROSS_COMPILE =arm-none-eabi-
+CC 			= $(CROSS_COMPILE)gcc
+CPLUS		= $(CROSS_COMPILE)g++
+CPP 		= $(CROSS_COMPILE)cpp
+LD 			= $(CROSS_COMPILE)gcc
+AS 			= $(CROSS_COMPILE)as
+CRNM        = $(CROSS_COMPILE)nm
+OBJCOPY		= $(CROSS_COMPILE)objcopy
+OBJDUMP		= $(CROSS_COMPILE)objdump
+OBJSIZE     = $(CROSS_COMPILE)size
+AR          = $(CROSS_COMPILE)ar
+
+#-------------------------------------------------------------------------------
+# Suffixes
+#-------------------------------------------------------------------------------
+.SUFFIXES: .h .c .s .sp .o .a .S .lds
+
+#-------------------------------------------------------------------------------
+# Project Name
+#-------------------------------------------------------------------------------
+PRJ_NAME = I2C_KBS_LDROM
+
+#-------------------------------------------------------------------------------
+# Directories
+#-------------------------------------------------------------------------------
+SRC_ROOT_DIR   = .
+PROJECT_DIR    = $(SRC_ROOT_DIR)\$(PRJ_NAME)
+CMSIS_DIR      = $(SRC_ROOT_DIR)\Library\CMSIS
+DEVICE_DIR     = $(SRC_ROOT_DIR)\Library\Device\Nuvoton\NM1240
+STDDRIVER_DIR  = $(SRC_ROOT_DIR)\Library\StdDriver
+OUTPUT_DIR     = $(SRC_ROOT_DIR)\Release
+TOOLS_DIR      = $(SRC_ROOT_DIR)\Tools
+
+#------------------------------------------
+# Directories references for Explicit/Implicit rules
+#------------------------------------------
+REF_SRC_ROOT_DIR = .\\.
+
+#-------------------------------------------------------------------------------
+# Object files of the project
+#-------------------------------------------------------------------------------
+
+CMSIS_INC = \
+    -I$(CMSIS_DIR)\Include
+
+PROJECT_INC = \
+    -I$(PROJECT_DIR)
+
+PROJECT_OBJS = \
+    $(PROJECT_DIR)\main.o        \
+    $(PROJECT_DIR)\prj_config.o  \
+    $(PROJECT_DIR)\i2c_ctrl.o    \
+    $(PROJECT_DIR)\uart_ctrl.o   \
+    $(PROJECT_DIR)\t2b_i2c_cmd.o
+
+DEVICE_INC = \
+    -I$(DEVICE_DIR)\Include      \
+    -I$(DEVICE_DIR)\Source\GCC
+
+DEVICE_OBJS = \
+    $(DEVICE_DIR)\Source\GCC\_syscalls.o       \
+    $(DEVICE_DIR)\Source\GCC\startup_NM1240.o  \
+    $(DEVICE_DIR)\Source\system_NM1240.o
+
+STDDRIVER_INC = \
+    -I$(STDDRIVER_DIR)\inc
+
+STDDRIVER_OBJS = \
+    $(STDDRIVER_DIR)\src\acmp.o       \
+    $(STDDRIVER_DIR)\src\adc.o        \
+    $(STDDRIVER_DIR)\src\bpwm.o       \
+    $(STDDRIVER_DIR)\src\clk.o        \
+    $(STDDRIVER_DIR)\src\ecap.o       \
+    $(STDDRIVER_DIR)\src\epwm.o       \
+    $(STDDRIVER_DIR)\src\fmc.o        \
+    $(STDDRIVER_DIR)\src\gdma.o       \
+    $(STDDRIVER_DIR)\src\gpio.o       \
+    $(STDDRIVER_DIR)\src\op.o         \
+    $(STDDRIVER_DIR)\src\retarget.o   \
+    $(STDDRIVER_DIR)\src\sys.o        \
+    $(STDDRIVER_DIR)\src\timer.o      \
+    $(STDDRIVER_DIR)\src\usci_i2c.o   \
+    $(STDDRIVER_DIR)\src\usci_spi.o   \
+    $(STDDRIVER_DIR)\src\usci_uart.o  \
+    $(STDDRIVER_DIR)\src\wdt.o
+
+#-------------------------------------------------------------------------------
+# C compilation flags
+#-------------------------------------------------------------------------------
+
+INCLUDE = -I. $(CMSIS_INC) $(PROJECT_INC) $(DEVICE_INC) $(STDDRIVER_INC)
+
+CFLAGS_DEFS = -DPRJ_NAME=$(PRJ_NAME)              
+
+# --- TARGET ---
+ALL_CPU=-mcpu=cortex-m0 -mthumb
+
+# --- WARNING ---
+CFLAGS_WARN=-Wall -Wno-unused-but-set-variable -Wno-trigraphs -Wno-unknown-pragmas -Wno-unused-function \
+            -Wno-unused-variable -Wno-pointer-to-int-cast -Wno-strict-aliasing -Wno-sequence-point
+
+# --- OPTIONS ---
+CFLAGS_OPTS=-std=gnu11 -fsigned-char -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-common
+
+# --- DEPENDENCY ---
+CFLAGS_DEPS=-MMD -MP -MF"$(@:%.o=%.d)" -MT"$@"
+
+# --- OPTIMIZATION ---
+ALL_OPT=-Os -g
+
+ARFLAGS = rcs
+
+CFLAGS = $(ALL_CPU) $(ALL_OPT) $(CFLAGS_DEPS) $(CFLAGS_WARN) $(INCLUDE) $(CFLAGS_DEFS) $(CFLAGS_OPTS)
+
+#-------------------------------------------------------------------------------
+# Assembler Flags
+#-------------------------------------------------------------------------------
+ASFLAGS_OPTS=$(CFLAGS_OPTS) $(ALL_OPT) 
+ASFLAGS_CPU=$(ALL_CPU)
+ASFLAGS = $(ASFLAGS_CPU) $(ASFLAGS_OPTS)
+
+#-------------------------------------------------------------------------------
+# Linker flags
+#-------------------------------------------------------------------------------
+LDSCRIPT = $(DEVICE_DIR)/Source/GCC/gcc_arm.ld
+
+#-------------------------------------------------------------------------------
+# LDFLAGS_LIBS :
+#   -lm     for <math.h>: libm.a (GNU ARM) is needed
+#
+# TBD, error: undefined reference to `_sbrk' , added the following:
+#       -specs=nosys.specs
+#       TBD: linkobj.lds.org =>  "_end = ..."; "end = _end;"
+#-------------------------------------------------------------------------------
+LDFLAGS_LIBS= -lm
+LDFLAGS_SPEC= --specs=nano.specs -specs=nosys.specs
+LDFLAGS_OPTS= -nostartfiles -Xlinker --gc-sections $(LDFLAGS_SPEC) $(LDFLAGS_LIBS)
+LDFLAGS_WARN= -Wall -Wextra
+
+LDFLAGS = -Wl,-Map,"${OUTPUT_DIR}\$(PRJ_NAME).map" \
+          $(ALL_CPU) $(ALL_OPT) $(LDFLAGS_OPTS) $(LDFLAGS_WARN)  $(LDLIBS)
+
+#-------------------------------------------------------------------------------
+# Explicit rules
+#-------------------------------------------------------------------------------
+OBJS   =  $(PROJECT_OBJS) $(DEVICE_OBJS) $(STDDRIVER_OBJS)
+
+# Append Outputs Path
+OBJS    = $(foreach s, $(PROJECT_OBJS), $(OUTPUT_DIR)\$(s))
+OBJS   += $(foreach s, $(DEVICE_OBJS), $(OUTPUT_DIR)\$(s))
+OBJS   += $(foreach s, $(STDDRIVER_OBJS), $(OUTPUT_DIR)\$(s))
+
+LDS_PARAMS = $(foreach s, $(LDSCRIPT), -T $(s))
+
+#-------------------------------------------------------------------------------
+# Makefile targets & rules
+#-------------------------------------------------------------------------------
+all: $(OUTPUT_DIR)\$(PRJ_NAME).elf $(OUTPUT_DIR)/$(PRJ_NAME).hex $(OUTPUT_DIR)/$(PRJ_NAME).bin $(OUTPUT_DIR)/$(PRJ_NAME).siz
+
+#-------------------------------------------------------------------------------
+# Implicit rules
+#-------------------------------------------------------------------------------
+$(OUTPUT_DIR)\$(PRJ_NAME).elf : $(OBJS) $(LDSCRIPT)
+	-@ $(LD) $(OBJS) -o $@ $(LDS_PARAMS) $(LDFLAGS)
+	-@ echo LD  $@
+
+$(OUTPUT_DIR)\\%.o : $(REF_SRC_ROOT_DIR)\\%.c
+	-@ if not exist $(@D) mkdir $(@D)
+	-@ if  exist $@ $(RM) $@
+	-@ echo CC  $@	from  $<
+	-@ $(CC) $< $(CFLAGS) -c -o $@
+
+$(OUTPUT_DIR)\\%.o : $(REF_SRC_ROOT_DIR)\\%.sp
+	-@ if not exist $(@D) mkdir $(@D)
+	-@ if  exist $@ $(RM) $@
+	-@ echo AS  $@	from  $<
+	-@ $(CC) $< $(ASFLAGS) -c -o $@
+
+$(OUTPUT_DIR)\\%.o : $(REF_SRC_ROOT_DIR)\\%.S
+	-@ if not exist $(@D) mkdir $(@D)
+	-@ if  exist $@ $(RM) $@
+	-@ echo AS  $@	from  $<
+	-@ $(CC) $< $(ASFLAGS) -c -o $@
+
+$(OUTPUT_DIR)/$(PRJ_NAME).hex: $(OUTPUT_DIR)/$(PRJ_NAME).elf
+	-@ $(OBJCOPY) $< -O ihex $@
+	-@ echo OBJCOPY $< -O ihex $@
+
+$(OUTPUT_DIR)/$(PRJ_NAME).bin: $(OUTPUT_DIR)/$(PRJ_NAME).elf
+	-@ $(OBJCOPY) $< -O binary $@
+	-@ echo OBJCOPY $< -O binary $@
+
+$(OUTPUT_DIR)/$(PRJ_NAME).siz : $(OUTPUT_DIR)/$(PRJ_NAME).elf
+	@echo **********************************************************
+	-@ $(OBJSIZE) $< --format=berkeley
+	@echo **********************************************************
+
+#-------------------------------------------------------------------------------
+# Clean
+#-------------------------------------------------------------------------------
+clean:
+	@echo Clean All Binary Files in Outputs
+	-@ $(RM) $(OUTPUT_DIR)\*.* /s
+
+cleanall:
+	-@ $(RMDIR) $(OUTPUT_DIR)
+
+
