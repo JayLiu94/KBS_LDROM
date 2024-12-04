@@ -11,6 +11,7 @@
 
 static volatile uint32_t FwServiceFlags = 0ul;
 
+
 void Sys_Init(void);
 void GPIO_IRQHandler(void);
 
@@ -25,7 +26,7 @@ typedef void (FUNC_PTR)(void);
 
 #define APROM_SINGNATURE_L      0x52504124
 #define APROM_SINGNATURE_H      0x203A4D4F
-
+#define FIRMWARE_UPDATE_FLAG_ADDR  (0x20001000)
 static FUNC_PTR *ap_fw_entry;
 
 uint32_t ld_fw_size;
@@ -176,7 +177,6 @@ int main()
     uint16_t    index;
     uint32_t    service_flags;
     uint32_t    aprom_flags;
-
     __disable_irq();
 
 	/* Prepare the hardware. */
@@ -193,6 +193,9 @@ int main()
 
     /* Enable FMC ISP function */
     FMC_Open();
+
+    /* Initial I2C module  */
+    T2B_I2C_Init();
 
     product_id = SYS_ReadPDID();
     company_id = FMC_ReadCID();
@@ -214,6 +217,13 @@ int main()
     if(aprom_flags & AP_SET_VECTOR_FAIL)
     {
         FMC_ISP_Config_Vector_Base(FMC_LDROM_BASE);
+    }
+
+    if (*(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR == 0x1)
+    {
+        //LDROM_FirmwareUpdate();  
+    	uart_send_string(UUART2, "\nJUMP TO LDROM.\n");
+    	uart_wait_send_done(UUART2);
     }
 
     FMC_Close();
