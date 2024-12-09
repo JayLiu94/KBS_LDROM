@@ -183,4 +183,182 @@ bool FMC_ISP_Config_Vector_Base(uint32_t base_addr)
 }
 
 
+void PrintFlashData(uint32_t u32StartAddr, uint32_t u32EndAddr)
+{
+    uint32_t addr;
+
+    uart_send_string(UUART2, "Print Flash Data from 0x");
+    uart_send_hex(UUART2, u32StartAddr, 4);
+    uart_send_string(UUART2, " to 0x");
+    uart_send_hex(UUART2, u32EndAddr, 4);
+    uart_send_char(UUART2, '\n');
+
+    for (addr = u32StartAddr; addr < u32EndAddr; addr += 32)
+    {
+        uint32_t data = FMC_Read(addr);
+        uart_send_string(UUART2, "Address: 0x");
+        uart_send_hex(UUART2, addr, 4);
+        uart_send_char(UUART2, '\n');
+        uart_send_string(UUART2, " Data: 0x");
+        uart_send_hex(UUART2, data, 8);
+        uart_send_char(UUART2, '\n');
+    }
+}
+
+FlashErrorCode gl_error_code = 0;
+
+int32_t  SetDataFlashBase(uint32_t u32DFBA)
+{
+    uint32_t au32Config[2];
+
+    /* Read current User Configuration */
+    if (FMC_ReadConfig(au32Config, 2) != 0)
+        return FLASH_READ_FAIL;
+
+    /* Just return when Data Flash has been enabled */
+    if ((!(au32Config[0] & 0x1)) && (au32Config[1] == u32DFBA))
+        return 0;
+
+    /* Enable User Configuration Update */
+    FMC_ENABLE_CFG_UPDATE(); 
+
+    /* Erase User Configuration */
+    if (FMC_Erase(FMC_CONFIG_BASE) != 0)
+        return FLASH_ERASE_ERROR;
+
+    /* Write User Configuration to Enable Data Flash */
+    au32Config[0] &= ~0x1;
+    au32Config[1] = u32DFBA;
+
+    if (FMC_WriteConfig(au32Config, 2))
+        return FLASH_WRITE_ERROR;
+
+    uart_send_string(UUART2,"\r\nSet Data Flash base as 0x");
+    uart_send_hex(UUART2, FMC_ReadDataFlashBaseAddr(), 4);
+    /* Perform chip reset to make new User Config take effect */
+    SYS->IPRST0 |= SYS_IPRST0_CHIPRST_Msk;
+
+    return 0;
+}
+
+
+
+
+int32_t FillDataPattern(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern)
+{
+    uint32_t u32Addr;
+
+    for(u32Addr = u32StartAddr; u32Addr < u32EndAddr; u32Addr += 4)
+    {
+        if (FMC_Write(u32Addr, u32Pattern) != 0)
+        {
+            uart_send_string(UUART2,"\rFMC_Write address failed!:0x\n");
+            uart_send_hex(UUART2, u32Addr, 4);
+            return FLASH_WRITE_ERROR;
+        }
+        uint32_t read_back = FMC_Read(u32Addr);
+        if (read_back != u32Pattern)
+        {
+            uart_send_string(UUART2, "Write verify failed at address: 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_string(UUART2, " Expected: 0x");
+            uart_send_hex(UUART2, u32Pattern, 4);
+            uart_send_string(UUART2, " Read: 0x");
+            uart_send_hex(UUART2, read_back, 4);
+            uart_send_char(UUART2, '\n');
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+int32_t  VerifyData(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern)
+{
+    uint32_t    u32Addr;
+    uint32_t    u32Data;
+
+
+    for(u32Addr = u32StartAddr; u32Addr < u32EndAddr; u32Addr += 4)
+    {
+        u32Data = FMC_Read(u32Addr);
+
+        if(u32Data != u32Pattern)
+        {
+            uart_send_string(UUART2,"FMC_Read data verify failed at address 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_char(UUART2, '\n');
+
+            uart_send_string(UUART2,"read=0x");
+            uart_send_hex(UUART2, u32Data, 4);
+            uart_send_char(UUART2, '\n');
+
+            uart_send_string(UUART2,"expect=0x");
+            uart_send_hex(UUART2, u32Pattern, 4);
+            uart_send_char(UUART2, '\n');
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern)
+{
+	uint32_t    u32Addr;
+
+    for(u32Addr = u32StartAddr; u32Addr < u32EndAddr; u32Addr += FMC_FLASH_PAGE_SIZE)
+    {
+        uart_send_string(UUART2,"Flash test address: 0x");
+        uart_send_hex(UUART2, u32Addr, 4);
+        uart_send_char(UUART2, '\n');
+        // Erase page
+        if (FMC_Erase(u32Addr) != 0)
+        {
+            uart_send_string(UUART2,"FMC_Erase address failed : 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_char(UUART2, '\n');
+            uart_wait_send_done(UUART2);
+            return FLASH_ERASE_ERROR;
+        }
+
+        // Verify if page contents are all 0xFFFFFFFF
+        if (VerifyData(u32Addr, u32Addr + FMC_FLASH_PAGE_SIZE, 0xFFFFFFFF) != 0)
+        {
+            uart_send_string(UUART2,"FMC_Verify address failed : 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_char(UUART2, '\n');
+            uart_wait_send_done(UUART2);
+            return -1;
+        }
+
+        // Write test pattern to fill the whole page
+        if(FillDataPattern(u32Addr, u32Addr + FMC_FLASH_PAGE_SIZE, u32Pattern) != 0)
+        {
+            uart_send_string(UUART2,"FMC_DataPattern address failed : 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_char(UUART2, '\n');
+            uart_wait_send_done(UUART2);
+            return -1;
+        }
+
+        // Verify if page contents are all equal to test pattern
+        if(VerifyData(u32Addr, u32Addr + FMC_FLASH_PAGE_SIZE, u32Pattern) != 0)
+        {
+            uart_send_string(UUART2,"\nData verify failed!\r\n ");
+            uart_wait_send_done(UUART2);
+            return -1;
+        }
+
+        
+    }
+    uart_send_string(UUART2, "Flash Test Passed.-Finish addr: 0x");
+    uart_send_hex(UUART2, u32Addr, 4);
+    uart_send_char(UUART2, '\n');
+    uart_wait_send_done(UUART2);
+
+    PrintFlashData(DATA_FLASH_TEST_BASE, DATA_FLASH_TEST_END);
+
+    return 0;
+}
 /*** (C) COPYRIGHT 2020 Nuvoton Technology Corp. ***/

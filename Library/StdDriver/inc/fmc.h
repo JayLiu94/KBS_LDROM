@@ -33,7 +33,7 @@ extern "C"
 #define FMC_APROM_BASE          0x00000000UL    /*!< APROM  Base Address         */   
 #define FMC_APROM_END_32K	0x00008000UL	   /*!< APROM  End Address of 32K  */  
 #define FMC_APROM_END_48K	0x0000C000UL	   /*!< APROM  End Address of 48K  */  
-#define FMC_APROM_END_64K	 0x00010000UL	   /*!< APROM  End Address of 64K  */  
+#define FMC_APROM_END_64K	0x00010000UL	   /*!< APROM  End Address of 64K  */  
 #define FMC_APROM_END           FMC_APROM_END_64K  /*!< APROM  End Address          */  
 #define FMC_LDROM_BASE          0x00100000UL    /*!< LDROM  Base Address         */
 #define FMC_LDROM_END           0x00101E00UL    /*!< LDROM  End Address          */
@@ -50,7 +50,12 @@ extern "C"
 #define FMC_APROM_SIZE		(FMC_APROM_END-FMC_APROM_BASE)	
 #define FMC_LDROM_SIZE          (FMC_LDROM_END-FMC_LDROM_BASE)           /*!< LDROM Size (7.5 Kbytes)       */
 #define FMC_SPROM_SIZE          0x200UL         /*!< SPROM Size (512 bytes)      */         
+#define DATA_FLASH_TEST_BASE    0x8000UL
+#define DATA_FLASH_TEST_END     0x9000UL
 
+// #define FMC_TIMEOUT_WRITE       ((SystemCoreClock/10)*2)
+// #define FMC_TIMEOUT_READ        ((SystemCoreClock/10)*2)
+// extern int32_t  g_FMC_i32ErrCode;
 /*---------------------------------------------------------------------------------------------------------*/
 /*  ISPCMD constant definitions                                                                            */
 /*---------------------------------------------------------------------------------------------------------*/
@@ -103,12 +108,10 @@ extern uint32_t FMC_ReadUID(uint32_t u32Index);
 extern uint32_t FMC_ReadDataFlashBaseAddr(void);
 extern void FMC_SetVectorPageAddr(uint32_t u32PageAddr);
 extern uint32_t FMC_GetVectorPageAddr(void);
-extern void FMC_Write(uint32_t u32Addr, uint32_t u32Data);
+extern int32_t FMC_Write(uint32_t u32Addr, uint32_t u32Data);
 extern int32_t FMC_ReadConfig(uint32_t *u32Config, uint32_t u32Count);
 extern int32_t FMC_WriteConfig(uint32_t *u32Config, uint32_t u32Count);
 extern int32_t FMC_GetCRC32Sum(uint32_t addr, uint32_t count, uint32_t *chksum);
-
-
 /*@}*/ /* end of group NM1240_FMC_EXPORTED_FUNCTIONS */
 
 /*@}*/ /* end of group NM1240_FMC_Driver */

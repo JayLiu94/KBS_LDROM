@@ -35,4 +35,23 @@ int FMC_APROM_Erase(uint32_t rom_addr, uint32_t rom_size);
 int FMC_APROM_Write(uint32_t rom_addr, uint32_t rom_size, uint32_t *rom_data);
 bool FMC_ISP_Config_Vector_Base(uint32_t base_addr);
 
+void PrintFlashData(uint32_t u32StartAddr, uint32_t u32EndAddr);
+int32_t SetDataFlashBase(uint32_t u32DFBA);
+int32_t FillDataPattern(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern);
+int32_t VerifyData(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern);
+uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern);
+
+
+typedef enum {
+    FLASH_ERASE_ERROR      ,
+    FLASH_VERIFY_FAIL      ,
+    //FLASH_WRITE_PAGE_FAIL  ,
+    FLASH_DATA_VERIFY_FAIL ,
+    FLASH_READ_FAIL        , 
+    FLASH_READ_VERIFY_FAIL ,
+    FLASH_WRITE_ERROR       
+} FlashErrorCode;
+
+
+
 #endif /* __APROM_ISP_H__ */

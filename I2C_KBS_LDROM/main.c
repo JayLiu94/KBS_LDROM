@@ -26,7 +26,10 @@ typedef void (FUNC_PTR)(void);
 
 #define APROM_SINGNATURE_L      0x52504124
 #define APROM_SINGNATURE_H      0x203A4D4F
-#define FIRMWARE_UPDATE_FLAG_ADDR  (0x20001000)
+#define FIRMWARE_UPDATE_FLAG_ADDR  (0x20001000) // record update flag
+#define TEST_PATTERN     0x5A5A5A5A
+
+
 static FUNC_PTR *ap_fw_entry;
 
 uint32_t ld_fw_size;
@@ -170,6 +173,9 @@ uint32_t identify_aprom_firmware(void)
 }
 
 
+
+
+
 /*-----------------------------------------------------------------------------------------------------------
  *---------------------------------------------------------------------------------------------------------*/
 int main()
@@ -197,6 +203,33 @@ int main()
     /* Initial I2C module  */
     T2B_I2C_Init();
 
+
+    if (*(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR == 0x1) // check update required
+    {
+         
+    	uart_send_string(UUART2, "\r\nJUMP FROM APROM...\n");
+    	uart_wait_send_done(UUART2);
+
+    	//FMC_ENABLE_AP_UPDATE();
+        if (SetDataFlashBase(DATA_FLASH_TEST_BASE) != 0)
+        {
+        	uart_send_string(UUART2,"Failed to set Data Flash base address!\n");
+        	uart_wait_send_done(UUART2);
+            while(1);
+        }
+        
+        if(FlashTest(DATA_FLASH_TEST_BASE,DATA_FLASH_TEST_END,TEST_PATTERN)!=0)
+        {
+            uart_send_string(UUART2, "\r\nFlashTest Failed.\n");
+    	    uart_wait_send_done(UUART2);
+        } 
+        *(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR = 0x0;  // clear update flag
+        uart_send_string(UUART2, "\rFlashTest Done!!!.\n");
+	    uart_wait_send_done(UUART2);
+ 
+        //FMC_DISABLE_AP_UPDATE();
+    }
+
     product_id = SYS_ReadPDID();
     company_id = FMC_ReadCID();
 
@@ -217,13 +250,6 @@ int main()
     if(aprom_flags & AP_SET_VECTOR_FAIL)
     {
         FMC_ISP_Config_Vector_Base(FMC_LDROM_BASE);
-    }
-
-    if (*(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR == 0x1)
-    {
-        //LDROM_FirmwareUpdate();  
-    	uart_send_string(UUART2, "\nJUMP TO LDROM.\n");
-    	uart_wait_send_done(UUART2);
     }
 
     FMC_Close();

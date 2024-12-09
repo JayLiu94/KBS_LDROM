@@ -117,12 +117,46 @@ void FMC_Open(void)
   */
 uint32_t FMC_Read(uint32_t u32Addr)
 { 
+
     FMC->ISPCMD = FMC_ISPCMD_READ;
     FMC->ISPADDR = u32Addr;
-    FMC->ISPTRG = FMC_ISPTRG_ISPGO_Msk; 
-    
-    while (FMC->ISPTRG & FMC_ISPTRG_ISPGO_Msk) ;
 
+    FMC->ISPTRG = FMC_ISPTRG_ISPGO_Msk; 
+
+    while ((FMC->ISPTRG & FMC_ISPTRG_ISPGO_Msk) || (FMC->ISPSTS & FMC_ISPSTS_ISPBUSY_Msk)) ;
+    // while ((tout-- > 0) && (FMC->ISPTRG)) {}
+    // if (tout <= 0)
+    // {
+    //     uart_send_string(UUART2, "\nFMC_Read tout <= 0\n");
+    //     g_FMC_i32ErrCode = -1;
+    //     return 0xFFFFFFFF;
+    // }
+    // {
+    //   if (FMC->ISPTRG & FMC_ISPTRG_ISPGO_Msk)
+    //     {
+    //         uart_send_string(UUART2, "ISPGO: 1, ");
+    //     }
+    //     else
+    //     {
+    //         uart_send_string(UUART2, "ISPGO: 0, ");
+    //     }
+
+       
+    //     if (FMC->ISPSTS & FMC_ISPSTS_ISPBUSY_Msk)
+    //     {
+    //         uart_send_string(UUART2, "ISPBUSY: 1\n");
+    //     }
+    //     else
+    //     {
+    //         uart_send_string(UUART2, "ISPBUSY: 0\n");
+    //     }
+    // }
+    // uart_send_string(UUART2, "FMC_Read ISPADDR: 0x");
+    // uart_send_hex(UUART2, FMC->ISPADDR, 4);
+    // uart_send_char(UUART2, '\n');
+    // uart_send_string(UUART2, "FMC_Read ISPDAT: 0x");
+    // uart_send_hex(UUART2, FMC->ISPDAT, 4);
+    // uart_send_char(UUART2, '\n');
     return FMC->ISPDAT;
 }
 
@@ -224,20 +258,48 @@ uint32_t FMC_GetVectorPageAddr(void)
 }
 
 
-
+int32_t  g_FMC_i32ErrCode;
 /**
   * @brief    Writes a word data to specified flash address.
   * @param[in]   u32Addr  Destination address
   * @param[in]   u32Data  Word data to be written
   * @return   None
   */
-void FMC_Write(uint32_t u32Addr, uint32_t u32Data)
+int32_t FMC_Write(uint32_t u32Addr, uint32_t u32Data)
 {
+    //int32_t  tout = FMC_TIMEOUT_WRITE;
     FMC->ISPCMD = FMC_ISPCMD_PROGRAM;
     FMC->ISPADDR = u32Addr;
     FMC->ISPDAT = u32Data;
     FMC->ISPTRG = FMC_ISPTRG_ISPGO_Msk; 
-    while (FMC->ISPTRG & FMC_ISPTRG_ISPGO_Msk) ;
+    while ((FMC->ISPTRG & FMC_ISPTRG_ISPGO_Msk) || (FMC->ISPSTS & FMC_ISPSTS_ISPBUSY_Msk)) ;
+    // {
+    //    if (FMC->ISPTRG & FMC_ISPTRG_ISPGO_Msk)
+    //     {
+    //         uart_send_string(UUART2, "ISPGO: 1, ");
+    //     }
+    //     else
+    //     {
+    //         uart_send_string(UUART2, "ISPGO: 0, ");
+    //     }
+
+       
+    //     if (FMC->ISPSTS & FMC_ISPSTS_ISPBUSY_Msk)
+    //     {
+    //         uart_send_string(UUART2, "ISPBUSY: 1\n");
+    //     }
+    //     else
+    //     {
+    //         uart_send_string(UUART2, "ISPBUSY: 0\n");
+    //     }
+    // }
+    // uart_send_string(UUART2, "FMC_Write ISPADDR: 0x");
+    // uart_send_hex(UUART2, FMC->ISPADDR, 4);
+    // uart_send_char(UUART2, '\n');
+    // uart_send_string(UUART2, "FMC_Write ISPDAT: 0x");
+    // uart_send_hex(UUART2, FMC->ISPDAT, 4);
+    // uart_send_char(UUART2, '\n');
+    return 0;
 }
 
 
