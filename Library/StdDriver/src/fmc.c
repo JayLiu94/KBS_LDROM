@@ -235,6 +235,43 @@ uint32_t FMC_ReadDataFlashBaseAddr(void)
 
 
 /**
+  * @brief    Set the base address of Data Flash if enabled.
+  * @return   The base address of Data Flash
+  */
+int32_t FMC_SetDataFlashBase(uint32_t u32DFBA)
+{
+    uint32_t au32Config[2];
+
+    /* Read current User Configuration */
+    if (FMC_ReadConfig(au32Config, 2) != 0)
+        return -1;
+
+    /* Just return when Data Flash has been enabled */
+    if ((!(au32Config[0] & 0x1)) && (au32Config[1] == u32DFBA))
+        return 0;
+
+    /* Enable User Configuration Update */
+    FMC_ENABLE_CFG_UPDATE(); 
+
+    /* Erase User Configuration */
+    if (FMC_Erase(FMC_CONFIG_BASE) != 0)
+        return -1;
+
+    /* Write User Configuration to Enable Data Flash */
+    au32Config[0] &= ~0x1;
+    au32Config[1] = u32DFBA;
+
+    if (FMC_WriteConfig(au32Config, 2))
+        return -1;
+
+    /* Perform chip reset to make new User Config take effect */
+    SYS->IPRST0 |= SYS_IPRST0_CHIPRST_Msk;
+
+    return 0;
+}
+
+
+/**
   * @brief    This function will force re-map assigned flash page to CPU address 0x0.
   * @param[in]    u32PageAddr   Address of the page to be mapped to CPU address 0x0.
   * @return   None

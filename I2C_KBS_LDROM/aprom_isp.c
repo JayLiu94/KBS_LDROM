@@ -199,49 +199,11 @@ void PrintFlashData(uint32_t u32StartAddr, uint32_t u32EndAddr)
         uart_send_string(UUART2, "Address: 0x");
         uart_send_hex(UUART2, addr, 4);
         uart_send_char(UUART2, '\n');
-        uart_send_string(UUART2, " Data: 0x");
+        uart_send_string(UUART2, "Data: 0x");
         uart_send_hex(UUART2, data, 8);
         uart_send_char(UUART2, '\n');
     }
 }
-
-FlashErrorCode gl_error_code = 0;
-
-int32_t  SetDataFlashBase(uint32_t u32DFBA)
-{
-    uint32_t au32Config[2];
-
-    /* Read current User Configuration */
-    if (FMC_ReadConfig(au32Config, 2) != 0)
-        return FLASH_READ_FAIL;
-
-    /* Just return when Data Flash has been enabled */
-    if ((!(au32Config[0] & 0x1)) && (au32Config[1] == u32DFBA))
-        return 0;
-
-    /* Enable User Configuration Update */
-    FMC_ENABLE_CFG_UPDATE(); 
-
-    /* Erase User Configuration */
-    if (FMC_Erase(FMC_CONFIG_BASE) != 0)
-        return FLASH_ERASE_ERROR;
-
-    /* Write User Configuration to Enable Data Flash */
-    au32Config[0] &= ~0x1;
-    au32Config[1] = u32DFBA;
-
-    if (FMC_WriteConfig(au32Config, 2))
-        return FLASH_WRITE_ERROR;
-
-    uart_send_string(UUART2,"\r\nSet Data Flash base as 0x");
-    uart_send_hex(UUART2, FMC_ReadDataFlashBaseAddr(), 4);
-    /* Perform chip reset to make new User Config take effect */
-    SYS->IPRST0 |= SYS_IPRST0_CHIPRST_Msk;
-
-    return 0;
-}
-
-
 
 
 int32_t FillDataPattern(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern)
@@ -254,18 +216,6 @@ int32_t FillDataPattern(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32
         {
             uart_send_string(UUART2,"\rFMC_Write address failed!:0x\n");
             uart_send_hex(UUART2, u32Addr, 4);
-            return FLASH_WRITE_ERROR;
-        }
-        uint32_t read_back = FMC_Read(u32Addr);
-        if (read_back != u32Pattern)
-        {
-            uart_send_string(UUART2, "Write verify failed at address: 0x");
-            uart_send_hex(UUART2, u32Addr, 4);
-            uart_send_string(UUART2, " Expected: 0x");
-            uart_send_hex(UUART2, u32Pattern, 4);
-            uart_send_string(UUART2, " Read: 0x");
-            uart_send_hex(UUART2, read_back, 4);
-            uart_send_char(UUART2, '\n');
             return -1;
         }
     }
@@ -307,11 +257,12 @@ uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Patte
 {
 	uint32_t    u32Addr;
 
+    uart_send_string(UUART2,"Flash test address: 0x");
+    uart_send_hex(UUART2, u32StartAddr, 4);
+    uart_send_char(UUART2, '\n');
     for(u32Addr = u32StartAddr; u32Addr < u32EndAddr; u32Addr += FMC_FLASH_PAGE_SIZE)
     {
-        uart_send_string(UUART2,"Flash test address: 0x");
-        uart_send_hex(UUART2, u32Addr, 4);
-        uart_send_char(UUART2, '\n');
+
         // Erase page
         if (FMC_Erase(u32Addr) != 0)
         {
@@ -319,7 +270,7 @@ uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Patte
             uart_send_hex(UUART2, u32Addr, 4);
             uart_send_char(UUART2, '\n');
             uart_wait_send_done(UUART2);
-            return FLASH_ERASE_ERROR;
+            return -1;
         }
 
         // Verify if page contents are all 0xFFFFFFFF
@@ -352,12 +303,12 @@ uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Patte
 
         
     }
-    uart_send_string(UUART2, "Flash Test Passed.-Finish addr: 0x");
+    uart_send_string(UUART2, "Flash Test Passed.Finish addr: 0x");
     uart_send_hex(UUART2, u32Addr, 4);
     uart_send_char(UUART2, '\n');
     uart_wait_send_done(UUART2);
 
-    PrintFlashData(DATA_FLASH_TEST_BASE, DATA_FLASH_TEST_END);
+    PrintFlashData(u32StartAddr, u32EndAddr);
 
     return 0;
 }

@@ -26,7 +26,8 @@ typedef void (FUNC_PTR)(void);
 
 #define APROM_SINGNATURE_L      0x52504124
 #define APROM_SINGNATURE_H      0x203A4D4F
-#define FIRMWARE_UPDATE_FLAG_ADDR  (0x20001000) // record update flag
+#define FIRMWARE_UPDATE_FLAG_ADDR  (0x20001000) 
+#define FIRMWARE_UPDATE_FLAG       *(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR
 #define TEST_PATTERN     0x5A5A5A5A
 
 
@@ -204,18 +205,17 @@ int main()
     T2B_I2C_Init();
 
 
-    if (*(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR == 0x1) // check update required
+    if (FIRMWARE_UPDATE_FLAG == 0x1) // check update required
     {
          
     	uart_send_string(UUART2, "\r\nJUMP FROM APROM...\n");
     	uart_wait_send_done(UUART2);
 
-    	//FMC_ENABLE_AP_UPDATE();
-        if (SetDataFlashBase(DATA_FLASH_TEST_BASE) != 0)
+
+        if (FMC_SetDataFlashBase(DATA_FLASH_TEST_BASE) != 0)
         {
         	uart_send_string(UUART2,"Failed to set Data Flash base address!\n");
         	uart_wait_send_done(UUART2);
-            while(1);
         }
         
         if(FlashTest(DATA_FLASH_TEST_BASE,DATA_FLASH_TEST_END,TEST_PATTERN)!=0)
@@ -223,11 +223,10 @@ int main()
             uart_send_string(UUART2, "\r\nFlashTest Failed.\n");
     	    uart_wait_send_done(UUART2);
         } 
-        *(volatile uint32_t *)FIRMWARE_UPDATE_FLAG_ADDR = 0x0;  // clear update flag
+        FIRMWARE_UPDATE_FLAG = 0x0;  // clear update flag
         uart_send_string(UUART2, "\rFlashTest Done!!!.\n");
 	    uart_wait_send_done(UUART2);
  
-        //FMC_DISABLE_AP_UPDATE();
     }
 
     product_id = SYS_ReadPDID();
