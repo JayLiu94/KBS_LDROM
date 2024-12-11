@@ -312,4 +312,80 @@ uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Patte
 
     return 0;
 }
+
+//ApStartAddr-->FMC_APROM_BASE(0x0000)
+//ApEndAddr-->DataFlashBase
+//DataEndAddr-->FMC_APROM_END_64K(0x10000)
+uint32_t FMC_APROM_Flash(uint32_t ApStartAddr, uint32_t ApEndAddr,uint32_t DataEndAddr)
+{
+    uint32_t u32Addr;
+    uint32_t u32Data;
+    uint32_t u32PageAddr;
+    uint32_t u32DataFlashAddr;
+    if (ApStartAddr > ApEndAddr || ApEndAddr > DataEndAddr) {
+        uart_send_string(UUART2, "Address range is invalid.\n");
+        return -1;
+    }
+
+    //FMC_ENABLE_AP_UPDATE();  
+    for (u32PageAddr = ApStartAddr; u32PageAddr < ApEndAddr; u32PageAddr += FMC_FLASH_PAGE_SIZE) 
+    {
+        if (FMC_Erase(u32PageAddr) != 0) 
+        {
+            uart_send_string(UUART2, "FMC_Erase failed at address: 0x");
+            uart_send_hex(UUART2, u32PageAddr, 4);
+            uart_send_char(UUART2, '\n');
+            return -1;
+        }
+
+        for (uint32_t u32VerifyAddr = u32PageAddr; u32VerifyAddr < u32PageAddr + FMC_FLASH_PAGE_SIZE; u32VerifyAddr += 4) 
+        {
+            if (FMC_Read(u32VerifyAddr) != 0xFFFFFFFF) 
+            {
+                uart_send_string(UUART2, "Page verify failed at address: 0x");
+                uart_send_hex(UUART2, u32VerifyAddr, 4);
+                uart_send_char(UUART2, '\n');
+                return -1;
+            }
+        }
+    }
+
+
+    for (u32Addr = ApStartAddr; u32Addr < ApEndAddr; u32Addr += 4) 
+    {
+        u32DataFlashAddr = ApEndAddr + (u32Addr - ApStartAddr);
+        if (u32DataFlashAddr >= DataEndAddr) {
+            uart_send_string(UUART2, "DataFlash address out of range.\n");
+            return -1;
+        }
+        u32Data = FMC_Read(u32DataFlashAddr);
+
+        if (FMC_Write(u32Addr, u32Data) != 0) {
+            uart_send_string(UUART2, "FMC_Write failed at address: 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_char(UUART2, '\n');
+            return -1;
+        }
+
+
+        uint32_t u32VerifyData = FMC_Read(u32Addr);
+        if (u32VerifyData != u32Data) {
+            uart_send_string(UUART2, "Verify failed at address: 0x");
+            uart_send_hex(UUART2, u32Addr, 4);
+            uart_send_char(UUART2, '\n');
+
+            uart_send_string(UUART2, "Expected: 0x");
+            uart_send_hex(UUART2, u32Data, 8);
+            uart_send_string(UUART2, " Read: 0x");
+            uart_send_hex(UUART2, u32VerifyData, 8);
+            uart_send_char(UUART2, '\n');
+            return -1;
+        }
+    }
+
+    uart_send_string(UUART2, "APROM flashing completed successfully.\n");
+    //FMC_DISABLE_AP_UPDATE();
+
+    return 0;       
+}
 /*** (C) COPYRIGHT 2020 Nuvoton Technology Corp. ***/

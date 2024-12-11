@@ -218,9 +218,17 @@ int main()
         	uart_wait_send_done(UUART2);
         }
         
-        if(FlashTest(DATA_FLASH_TEST_BASE,DATA_FLASH_TEST_END,TEST_PATTERN)!=0)
+        // if(FlashTest(DATA_FLASH_TEST_BASE,FMC_APROM_END,TEST_PATTERN)!=0)
+        // {
+        //     uart_send_string(UUART2, "\r\nFlashTest Failed.\n");
+    	//     uart_wait_send_done(UUART2);
+        // } 
+
+        //APROM FLASH
+
+        if(FMC_APROM_Flash(FMC_APROM_BASE,DATA_FLASH_TEST_BASE,FMC_APROM_END_64K)!=0)
         {
-            uart_send_string(UUART2, "\r\nFlashTest Failed.\n");
+            uart_send_string(UUART2, "\r\nAPROM FlashTest Failed.\n");
     	    uart_wait_send_done(UUART2);
         } 
         FIRMWARE_UPDATE_FLAG = 0x0;  // clear update flag

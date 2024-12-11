@@ -40,7 +40,7 @@ int32_t SetDataFlashBase(uint32_t u32DFBA);
 int32_t FillDataPattern(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern);
 int32_t VerifyData(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern);
 uint32_t FlashTest(uint32_t u32StartAddr, uint32_t u32EndAddr, uint32_t u32Pattern);
-
+uint32_t FMC_APROM_Flash(uint32_t ApStartAddr, uint32_t ApEndAddr,uint32_t DataEndAddr);
 
 //typedef enum {
 //

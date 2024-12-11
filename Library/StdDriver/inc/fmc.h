@@ -51,7 +51,7 @@ extern "C"
 #define FMC_LDROM_SIZE          (FMC_LDROM_END-FMC_LDROM_BASE)           /*!< LDROM Size (7.5 Kbytes)       */
 #define FMC_SPROM_SIZE          0x200UL         /*!< SPROM Size (512 bytes)      */         
 #define DATA_FLASH_TEST_BASE    0x8000UL
-#define DATA_FLASH_TEST_END     0x9000UL
+
 
 // #define FMC_TIMEOUT_WRITE       ((SystemCoreClock/10)*2)
 // #define FMC_TIMEOUT_READ        ((SystemCoreClock/10)*2)
